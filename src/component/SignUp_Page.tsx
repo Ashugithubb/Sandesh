@@ -1,29 +1,58 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { doc, setDoc } from "firebase/firestore";
 import {
     Box,
     TextField,
     Button,
     Typography,
     Paper,
-    Stack,
+    // Stack,
     Snackbar,
     Alert,
 } from "@mui/material";
-import { signInWithPopup } from "firebase/auth";
-import { auth, googleProvider } from "../firebase/Fire_Base";
+import {
+    createUserWithEmailAndPassword,
+} from "firebase/auth";
+import { auth, db } from "../firebase/Fire_Base";
 
 export const SignUp = () => {
+    const [name, setName] = useState("");
+    const [email, setEmail] = useState("");
+    const [password, setPassword] = useState("");
     const [openSnackbar, setOpenSnackbar] = useState(false);
+    const [snackbarMessage, setSnackbarMessage] = useState("");
+    const [snackbarSeverity, setSnackbarSeverity] = useState<"success" | "error">("success");
+    const navigate = useNavigate();
 
-    const handleLogin = async () => {
+
+
+
+    const handleSignup = async () => {
         try {
-            await signInWithPopup(auth, googleProvider);
-            setOpenSnackbar(true); // Show success message
-        } catch (error) {
-            console.error(error);
+          const res =   await createUserWithEmailAndPassword(auth, email, password);
+            navigate("/login");
+            setOpenSnackbar(true);
+            await setDoc(doc(db, "users", res.user.uid), {
+             id:res.user.uid,
+             name,
+             email,
+             password
+            });
+             await setDoc(doc(db, "userChats", res.user.uid), {
+             chats:[]
+            });
+            setSnackbarMessage("🎉 Account created successfully!");
+            setSnackbarSeverity("success");
+            setTimeout(() => {
+            navigate("/login");
+        }, 20000);
+        } catch (error: any) {
+            setSnackbarMessage(error.message);
+            setSnackbarSeverity("error");
+            setOpenSnackbar(true);
         }
     };
-
     const handleCloseSnackbar = (
         event?: React.SyntheticEvent | Event,
         reason?: string
@@ -32,40 +61,46 @@ export const SignUp = () => {
         setOpenSnackbar(false);
     };
 
+
+    // ...existing code...
+
     return (
-        <>
-            <Paper elevation={3} sx={{ padding: 4, minWidth: 320, marginLeft: "120%" }}>
-                <Stack direction={"row"}>
-                    <Typography>New User?</Typography>
-                    <Typography
-                        sx={{ paddingLeft: "10px", cursor: "pointer", color: "blue" }}
-                    >
-                        Signup
-                    </Typography>
-                </Stack>
+        <Box
+            sx={{
+                minHeight: "100vh",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                bgcolor: "#f5f6fa",
+            }}
+        >
+            <Paper elevation={3} sx={{ padding: 4, minWidth: 320 }}>
 
-                <Button
-                    onClick={handleLogin}
-                    variant="outlined"
-                    fullWidth
-                    sx={{ mt: 2 }}
-                >
-                    Continue with Google
-                </Button>
 
-                <Typography sx={{ textAlign: "center" }}>or</Typography>
+
 
                 <Typography variant="h5" align="center" gutterBottom>
-                    Login
+                    Create A Account
                 </Typography>
 
                 <Box component="form" noValidate autoComplete="off">
+                    <TextField
+                        label="Name"
+                        variant="outlined"
+                        fullWidth
+                        margin="normal"
+                        type="Text"
+                        value={name}
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setName(e.target.value)}
+                    />
                     <TextField
                         label="Email"
                         variant="outlined"
                         fullWidth
                         margin="normal"
                         type="email"
+                        value={email}
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEmail(e.target.value)}
                     />
                     <TextField
                         label="Password"
@@ -73,38 +108,38 @@ export const SignUp = () => {
                         fullWidth
                         margin="normal"
                         type="password"
+                        value={password}
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPassword(e.target.value)}
                     />
-                    <Typography
-                        sx={{ color: "blue", cursor: "pointer", fontSize: 14, mt: 1, mb: 2 }}
-                        onClick={() => {
-                            // Add your forgot password logic here, e.g., open a dialog or navigate
-                            alert("Forgot Password clicked!");
-                        }}
-                    >
-                        Forgot Password?
-                    </Typography>
                     <Button
                         variant="contained"
                         color="primary"
                         fullWidth
                         sx={{ mt: 2 }}
+                        onClick={handleSignup}
                     >
-                        Login
+                        SignUp
                     </Button>
                 </Box>
             </Paper>
 
-            {/* ✅ Snackbar for success */}
+            {/* Snackbar */}
             <Snackbar
                 open={openSnackbar}
                 autoHideDuration={3000}
                 onClose={handleCloseSnackbar}
                 anchorOrigin={{ vertical: "top", horizontal: "right" }}
             >
-                <Alert onClose={handleCloseSnackbar} severity="success" sx={{ width: "100%" }}>
-                    ✅ Sign up Complete Now Login
+                <Alert
+                    onClose={handleCloseSnackbar}
+                    severity={snackbarSeverity}
+                    sx={{ width: "100%" }}
+                >
+                    {snackbarMessage}
                 </Alert>
             </Snackbar>
-        </>
+        </Box>
     );
+
+
 };

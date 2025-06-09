@@ -6,7 +6,7 @@ import { Stack, TextField } from '@mui/material';
 export const ChatBar = () => {
     return (
         <>
-        <Stack direction={'row'} spacing={3}>
+        <Stack direction={'row'} spacing={3} marginTop={"65vh"}>
             <AddIcon sx={{color:"#982176E5"}} />
             <MicIcon sx={{color:"#982176E5"}} />
 

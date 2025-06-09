@@ -12,7 +12,7 @@ const SearchUser = () => {
                         alignItems: "center",    
                         justifyContent: "flex-start", 
                         height: '10vh',
-                        width: '100%',
+                        width: '85%',
                         backgroundColor: "#FDDFD680",
                     }}
                 >
