@@ -13,12 +13,18 @@ import MinimizeIcon from "@mui/icons-material/Minimize";
 import CropSquareIcon from "@mui/icons-material/CropSquare";
 import CloseIcon from "@mui/icons-material/Close";
 import { useAppSelector } from "../redux/hook/hook";
-import { doc, getDoc } from "firebase/firestore";
+import { doc, getDoc, onSnapshot } from "firebase/firestore";
 import { db } from "../firebase/Fire_Base";
+
+interface IOnline {
+  isOnline: boolean;
+  isTyping: boolean;
+}
 
 export const OpenChat = () => {
   const { chatId, receiverId } = useAppSelector((state) => state.chat);
   const [receiverName, setReceiverName] = useState<string>("");
+  const [isOnline, setIsOnline] = useState<IOnline>();
 
   useEffect(() => {
     const fetchReceiverName = async () => {
@@ -42,8 +48,23 @@ export const OpenChat = () => {
 
   if (!chatId || !receiverId) return null;
 
+  // Listen to the online status of the receiver, not the current user
+  useEffect(() => {
+    if (!receiverId) return;
+    const onlineRef = doc(db, "isOnline", receiverId);
+    const unsub = onSnapshot(onlineRef, (doc) => {
+      const data = doc.data() as IOnline;
+      if (data) {
+        setIsOnline(data);
+      } else {
+        setIsOnline(undefined);
+      }
+    });
+    return () => unsub();
+  }, [receiverId]);
+
   return (
-    <Box sx={{ width: "235%", p: 2 }}>
+    <Box sx={{ width: "97%", p: 2 }}>
       <Stack direction="row" alignItems="center">
         <Box sx={{ position: "relative", display: "inline-block" }}>
           <Avatar sx={{ width: 56, height: 56 }} />
@@ -52,7 +73,7 @@ export const OpenChat = () => {
               position: "absolute",
               bottom: 5,
               right: 5,
-              background: "green",
+              background: isOnline?.isOnline ? "green" : "gray",
               height: "10px",
               width: "10px",
               border: "2px solid #fff",
@@ -63,7 +84,15 @@ export const OpenChat = () => {
         <Stack direction="column" sx={{ ml: 2 }}>
           <Typography variant="h6">{receiverName}</Typography>
           <Typography variant="body2" color="text.secondary">
-            Active Now
+            {(() => {
+              if (isOnline?.isTyping) {
+                return "Typing...";
+              } else if (isOnline?.isOnline) {
+                return "Online";
+              } else {
+                return "offline";
+              }
+            })()}
           </Typography>
         </Stack>
         <Box sx={{ display: "flex", ml: "auto", gap: 2 }}>
