@@ -90,7 +90,7 @@ export const Login = () => {
     };
 
     const handleCloseSnackbar = (
-        event?: React.SyntheticEvent | Event,
+        _?: unknown,
         reason?: string
     ) => {
         if (reason === "clickaway") return;
