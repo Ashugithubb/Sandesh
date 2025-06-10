@@ -9,10 +9,17 @@ import MinimizeIcon from "@mui/icons-material/Minimize";
 import CropSquareIcon from "@mui/icons-material/CropSquare";
 import CloseIcon from "@mui/icons-material/Close";
 import SendIcon from "@mui/icons-material/Send";
-import EmojiEmotionsIcon from '@mui/icons-material/EmojiEmotions';
+import EmojiEmotionsIcon from "@mui/icons-material/EmojiEmotions";
 import EmojiPicker from "emoji-picker-react";
 import {
-  arrayUnion, doc, getDoc, onSnapshot, setDoc, updateDoc
+  collection,
+  doc,
+  getDoc,
+  onSnapshot,
+  orderBy,
+  query,
+  setDoc,
+  updateDoc
 } from "firebase/firestore";
 import { onAuthStateChanged } from "firebase/auth";
 import { useAppSelector } from "../redux/hook/hook";
@@ -20,8 +27,10 @@ import { auth, db } from "../firebase/Fire_Base";
 
 interface MessageType {
   senderId: string;
+  receiverId: string;
   text: string;
-  createdAt: any;
+  createdAt: number;
+  isSeen: boolean;
 }
 
 interface IOnline {
@@ -34,7 +43,7 @@ export const Chats = () => {
   const [messages, setMessages] = useState<MessageType[]>([]);
   const [newMessage, setNewMessage] = useState("");
   const [currentUser, setCurrentUser] = useState<string | null>(null);
-  const [receiverName, setReceiverName] = useState<string>("");
+  const [receiverName, setReceiverName] = useState<string>("Unknown");
   const [isOnline, setIsOnline] = useState<IOnline>();
   const [showEmoji, setShowEmoji] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -49,11 +58,17 @@ export const Chats = () => {
 
   useEffect(() => {
     if (!chatId) return;
-    const unsub = onSnapshot(doc(db, "chats", chatId), (docSnap) => {
-      if (docSnap.exists()) {
-        setMessages(docSnap.data().messages || []);
-      }
+
+    const q = query(
+      collection(db, "chats", chatId, "messages"),
+      orderBy("createdAt", "asc")
+    );
+
+    const unsub = onSnapshot(q, (snapshot) => {
+      const msgs: MessageType[] = snapshot.docs.map((doc) => doc.data() as MessageType);
+      setMessages(msgs);
     });
+
     return () => unsub();
   }, [chatId]);
 
@@ -69,10 +84,8 @@ export const Chats = () => {
         const userSnap = await getDoc(userRef);
         if (userSnap.exists()) {
           setReceiverName(userSnap.data().name || "Unknown");
-        } else {
-          setReceiverName("Unknown User");
         }
-      } catch (error) {
+      } catch {
         setReceiverName("Error");
       }
     };
@@ -90,14 +103,30 @@ export const Chats = () => {
   }, [receiverId]);
 
   const handleSend = async () => {
-    if (!newMessage.trim() || !chatId || !currentUser) return;
+    if (!newMessage.trim() || !chatId || !currentUser || !receiverId) return;
+
+    const message: MessageType = {
+      senderId: currentUser,
+      receiverId,
+      text: newMessage,
+      createdAt: Date.now(),
+      isSeen: false,
+    };
+
+    const messagesRef = doc(
+      db,
+      "chats",
+      chatId,
+      "messages",
+      `${Date.now()}_${currentUser}`
+    );
+
+    await setDoc(messagesRef, message);
+
     await updateDoc(doc(db, "chats", chatId), {
-      messages: arrayUnion({
-        senderId: currentUser,
-        text: newMessage,
-        createdAt: Date.now()
-      }),
+      lastMessage: message,
     });
+
     setNewMessage("");
   };
 
@@ -174,18 +203,11 @@ export const Chats = () => {
       <Box sx={{ flex: 1, overflowY: "auto", px: 2, py: 1, width: "100%" }}>
         {messages.map((msg, index) => {
           const isSender = msg.senderId === currentUser;
-          const time =
-            typeof msg.createdAt === "number"
-              ? new Date(msg.createdAt).toLocaleTimeString([], {
-                  hour: "2-digit",
-                  minute: "2-digit",
-                })
-              : msg.createdAt?.seconds
-                ? new Date(msg.createdAt.seconds * 1000).toLocaleTimeString([], {
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  })
-                : "Sending...";
+          const time = new Date(msg.createdAt).toLocaleTimeString([], {
+            hour: "2-digit",
+            minute: "2-digit",
+          });
+
           return (
             <Stack
               key={index}
