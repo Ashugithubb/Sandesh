@@ -1,6 +1,6 @@
 import { Avatar, Box, Button, Stack, Typography } from "@mui/material"
 import { auth, db } from "../firebase/Fire_Base";
-import { doc, getDoc, onSnapshot, setDoc } from "firebase/firestore";
+import { doc, getDoc, setDoc } from "firebase/firestore";
 import { useEffect,useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAppSelector } from "../redux/hook/hook";
